@@ -1,9 +1,10 @@
 // models/User.js
 
-var mongoose = require('mongoose');
+const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
 // schema // 1
-var userSchema = mongoose.Schema(
+const userSchema = mongoose.Schema(
 	{
 		username: {
 			type: String,
@@ -62,7 +63,7 @@ userSchema
 
 // password validation // 3
 userSchema.path('password').validate(function (v) {
-	var user = this; // 3-1
+	const user = this; // 3-1
 
 	// create user // 3-3
 	if (user.isNew) {
@@ -86,7 +87,9 @@ userSchema.path('password').validate(function (v) {
 	if (!user.isNew) {
 		if (!user.currentPassword) {
 			user.invalidate('currentPassword', 'Current Password is required!');
-		} else if (user.currentPassword != user.originalPassword) {
+		} else if (
+			!bcrypt.compareSync(user.currentPassword, user._originalPassword)
+		) {
 			user.invalidate('currentPassword', 'Current Password is invalid!');
 		}
 
@@ -99,6 +102,23 @@ userSchema.path('password').validate(function (v) {
 	}
 });
 
+// hash password //
+userSchema.pre('save', (next) => {
+	const user = this;
+	if (!user.isModified('password')) {
+		return next();
+	} else {
+		user.password = bcrypt.hashSync(user.password);
+		return next();
+	}
+});
+
+// model methods //
+userSchema.methods.authenticate = (password) => {
+	const user = this;
+	return bcrypt.compareSync(password, user.password);
+};
+
 // model & export
-var User = mongoose.model('user', userSchema);
+const User = mongoose.model('user', userSchema);
 module.exports = User;

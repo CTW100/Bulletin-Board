@@ -1,8 +1,8 @@
 // routes/users.js
 
-var express = require('express');
-var router = express.Router();
-var User = require('../models/User');
+const express = require('express');
+const router = express.Router();
+const User = require('../models/User');
 
 // Index // 1
 router.get('/', function (req, res) {
@@ -55,7 +55,7 @@ router.put('/:username', function (req, res, next) {
 			user.password = req.body.newPassword
 				? req.body.newPassword
 				: user.password; // 2-3
-			for (var p in req.body) {
+			for (const p in req.body) {
 				// 2-4
 				user[p] = req.body[p];
 			}
