@@ -1,66 +1,81 @@
 const express = require('express');
 const router = express.Router();
 const Post = require('../models/Post');
+const util = require('../util');
 
 // Index
-// Get , posts/
-router.get('/', (req, res) => {
-	Post.find({}) // 1
-		.sort('-createdAt') // 1
-		.exec((err, posts) => {
-			// 1
+router.get('/', function (req, res) {
+	Post.find({})
+		.sort('-createdAt')
+		.exec(function (err, posts) {
 			if (err) return res.json(err);
 			res.render('posts/index', { posts: posts });
 		});
 });
 
 // New
-// Get , posts/new
-router.get('/new', (req, res) => {
-	res.render('posts/new');
+router.get('/new', function (req, res) {
+	const post = req.flash('post')[0] || {};
+	const errors = req.flash('errors')[0] || {};
+	res.render('posts/new', { post: post, errors: errors });
 });
 
-// Create
-// Post , posts/
-router.post('/', (req, res) => {
-	Post.create(req.body, (err, post) => {
-		if (err) return res.json(err);
+// create
+router.post('/', function (req, res) {
+	Post.create(req.body, function (err, post) {
+		if (err) {
+			req.flash('post', req.body);
+			req.flash('errors', util.parseError(err));
+			return res.redirect('/posts/new');
+		}
 		res.redirect('/posts');
 	});
 });
 
-// Show
-// Get , posts/:id
-router.get('/:id', (req, res) => {
-	Post.findOne({ _id: req.params.id }, (err, post) => {
+// show
+router.get('/:id', function (req, res) {
+	Post.findOne({ _id: req.params.id }, function (err, post) {
 		if (err) return res.json(err);
 		res.render('posts/show', { post: post });
 	});
 });
 
-// Edit
-// Get , posts/:id/edit
-router.get('/:id/edit', (req, ers) => {
-	Post.findOne({ _id: req.params.id }, (err, post) => {
-		if (err) return res.json(err);
-		res.render('posts/edit', { post: post });
-	});
+// edit
+router.get('/:id/edit', function (req, res) {
+	const post = req.flash('post')[0];
+	const errors = req.flash('errors')[0] || {};
+	if (!post) {
+		Post.findOne({ _id: req.params.id }, function (err, post) {
+			if (err) return res.json(err);
+			res.render('posts/edit', { post: post, errors: errors });
+		});
+	} else {
+		post._id = req.params.id;
+		res.render('posts/edit', { post: post, errors: errors });
+	}
 });
 
-// Update
-// Put , posts/:id
-router.put('/:id', (req, res) => {
-	req.body.updatedAt = Date.now(); //2
-	Post.findOneAndUpdate({ _id: req.params.id }, req.body, (err, post) => {
-		if (err) return res.json(err);
-		res.redirect('/posts/' + req.params.id);
-	});
+// update
+router.put('/:id', function (req, res) {
+	req.body.updatedAt = Date.now();
+	Post.findOneAndUpdate(
+		{ _id: req.params.id },
+		req.body,
+		{ runValidators: true },
+		function (err, post) {
+			if (err) {
+				req.flash('post', req.body);
+				req.flash('errors', util.parseError(err));
+				return res.redirect('/posts/' + req.params.id + '/edit');
+			}
+			res.redirect('/posts/' + req.params.id);
+		}
+	);
 });
 
-// Destroy
-// Delete , posts/:id
-router.delete('/:id', (req, res) => {
-	Post.deleteOne({ _id: req.params.id }, (err) => {
+// destroy
+router.delete('/:id', function (req, res) {
+	Post.deleteOne({ _id: req.params.id }, function (err) {
 		if (err) return res.json(err);
 		res.redirect('/posts');
 	});

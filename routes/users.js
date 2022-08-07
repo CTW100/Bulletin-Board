@@ -1,6 +1,7 @@
-var express = require('express');
-var router = express.Router();
-var User = require('../models/User');
+const express = require('express');
+const router = express.Router();
+const User = require('../models/User');
+const util = require('../util');
 
 // Index
 router.get('/', function (req, res) {
@@ -14,8 +15,8 @@ router.get('/', function (req, res) {
 
 // New
 router.get('/new', function (req, res) {
-	var user = req.flash('user')[0] || {};
-	var errors = req.flash('errors')[0] || {};
+	const user = req.flash('user')[0] || {};
+	const errors = req.flash('errors')[0] || {};
 	res.render('users/new', { user: user, errors: errors });
 });
 
@@ -24,7 +25,7 @@ router.post('/', function (req, res) {
 	User.create(req.body, function (err, user) {
 		if (err) {
 			req.flash('user', req.body);
-			req.flash('errors', parseError(err));
+			req.flash('errors', util.parseError(err));
 			return res.redirect('/users/new');
 		}
 		res.redirect('/users');
@@ -41,8 +42,8 @@ router.get('/:username', function (req, res) {
 
 // edit
 router.get('/:username/edit', function (req, res) {
-	var user = req.flash('user')[0];
-	var errors = req.flash('errors')[0] || {};
+	const user = req.flash('user')[0];
+	const errors = req.flash('errors')[0] || {};
 	if (!user) {
 		User.findOne({ username: req.params.username }, function (err, user) {
 			if (err) return res.json(err);
@@ -73,7 +74,7 @@ router.put('/:username', function (req, res, next) {
 			user.password = req.body.newPassword
 				? req.body.newPassword
 				: user.password;
-			for (var p in req.body) {
+			for (const p in req.body) {
 				user[p] = req.body[p];
 			}
 
@@ -81,7 +82,7 @@ router.put('/:username', function (req, res, next) {
 			user.save(function (err, user) {
 				if (err) {
 					req.flash('user', req.body);
-					req.flash('errors', parseError(err));
+					req.flash('errors', util.parseError(err));
 					return res.redirect(
 						'/users/' + req.params.username + '/edit'
 					);
@@ -100,22 +101,3 @@ router.delete('/:username', function (req, res) {
 });
 
 module.exports = router;
-
-// functions
-function parseError(errors) {
-	var parsed = {};
-	if (errors.name == 'ValidationError') {
-		for (var name in errors.errors) {
-			var validationError = errors.errors[name];
-			parsed[name] = { message: validationError.message };
-		}
-	} else if (
-		errors.code == '11000' &&
-		errors.errmsg.indexOf('username') > 0
-	) {
-		parsed.username = { message: 'This username already exists!' };
-	} else {
-		parsed.unhandled = JSON.stringify(errors);
-	}
-	return parsed;
-}
