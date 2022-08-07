@@ -36,21 +36,24 @@
 					>
 						<!-- 1 -->
 						<div class="post-info card m-2 p-2">
+							<div class="border-bottom pb-1 mb-1">
+								<!-- 1 -->
+								<span>Author</span> : <%= post.author ?
+								post.author.username : "" %>
+							</div>
 							<div>
 								<span>Created</span> :
-								<span
-									data-date-time="<%= post.createdAt %>"
-								></span>
+								<span data-date-time="<%= post.createdAt %>"
+									><%= post.createdAt %></span
+								>
 							</div>
-							<!-- 2 -->
 							<% if(post.updatedAt) { %>
 							<div>
 								<span>Updated</span> :
-								<span
-									data-date-time="<%= post.updatedAt %>"
-								></span>
+								<span data-date-time="<%= post.updatedAt %>"
+									><%= post.updatedAt %></span
+								>
 							</div>
-							<!-- 2 -->
 							<% } %>
 						</div>
 					</div>
