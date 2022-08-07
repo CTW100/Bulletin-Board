@@ -1,14 +1,14 @@
-// models/User.js
+var mongoose = require('mongoose');
+var bcrypt = require('bcryptjs');
 
-const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
-
-// schema // 1
-const userSchema = mongoose.Schema(
+// schema
+var userSchema = mongoose.Schema(
 	{
 		username: {
 			type: String,
 			required: [true, 'Username is required!'],
+			match: [/^.{4,12}$/, 'Should be 4-12 characters!'],
+			trim: true,
 			unique: true,
 		},
 		password: {
@@ -16,15 +16,27 @@ const userSchema = mongoose.Schema(
 			required: [true, 'Password is required!'],
 			select: false,
 		},
-		name: { type: String, required: [true, 'Name is required!'] },
-		email: { type: String },
+		name: {
+			type: String,
+			required: [true, 'Name is required!'],
+			match: [/^.{4,12}$/, 'Should be 4-12 characters!'],
+			trim: true,
+		},
+		email: {
+			type: String,
+			match: [
+				/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+				'Should be a vaild email address!',
+			],
+			trim: true,
+		},
 	},
 	{
 		toObject: { virtuals: true },
 	}
 );
 
-// virtuals // 2
+// virtuals
 userSchema
 	.virtual('passwordConfirmation')
 	.get(function () {
@@ -61,13 +73,15 @@ userSchema
 		this._newPassword = value;
 	});
 
-// password validation // 3
+// password validation
+var passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,16}$/;
+var passwordRegexErrorMessage =
+	'Should be minimum 8 characters of alphabet and number combination!';
 userSchema.path('password').validate(function (v) {
-	const user = this; // 3-1
+	var user = this;
 
-	// create user // 3-3
+	// create user
 	if (user.isNew) {
-		// 3-2
 		if (!user.passwordConfirmation) {
 			user.invalidate(
 				'passwordConfirmation',
@@ -75,7 +89,9 @@ userSchema.path('password').validate(function (v) {
 			);
 		}
 
-		if (user.password !== user.passwordConfirmation) {
+		if (!passwordRegex.test(user.password)) {
+			user.invalidate('password', passwordRegexErrorMessage);
+		} else if (user.password !== user.passwordConfirmation) {
 			user.invalidate(
 				'passwordConfirmation',
 				'Password Confirmation does not matched!'
@@ -83,17 +99,19 @@ userSchema.path('password').validate(function (v) {
 		}
 	}
 
-	// update user // 3-4
+	// update user
 	if (!user.isNew) {
 		if (!user.currentPassword) {
 			user.invalidate('currentPassword', 'Current Password is required!');
 		} else if (
-			!bcrypt.compareSync(user.currentPassword, user._originalPassword)
+			!bcrypt.compareSync(user.currentPassword, user.originalPassword)
 		) {
 			user.invalidate('currentPassword', 'Current Password is invalid!');
 		}
 
-		if (user.newPassword !== user.passwordConfirmation) {
+		if (user.newPassword && !passwordRegex.test(user.newPassword)) {
+			user.invalidate('newPassword', passwordRegexErrorMessage);
+		} else if (user.newPassword !== user.passwordConfirmation) {
 			user.invalidate(
 				'passwordConfirmation',
 				'Password Confirmation does not matched!'
@@ -102,9 +120,9 @@ userSchema.path('password').validate(function (v) {
 	}
 });
 
-// hash password //
-userSchema.pre('save', (next) => {
-	const user = this;
+// hash password
+userSchema.pre('save', function (next) {
+	var user = this;
 	if (!user.isModified('password')) {
 		return next();
 	} else {
@@ -113,12 +131,12 @@ userSchema.pre('save', (next) => {
 	}
 });
 
-// model methods //
-userSchema.methods.authenticate = (password) => {
-	const user = this;
+// model methods
+userSchema.methods.authenticate = function (password) {
+	var user = this;
 	return bcrypt.compareSync(password, user.password);
 };
 
 // model & export
-const User = mongoose.model('user', userSchema);
+var User = mongoose.model('user', userSchema);
 module.exports = User;
