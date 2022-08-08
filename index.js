@@ -24,6 +24,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(methodOverride('_method'));
 
 app.use('/', require('./routes/home'));
+app.use('/posts', require('./routes/posts'));
 
 const port = 3000;
 app.listen(3000, (req, res) => {
