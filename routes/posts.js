@@ -38,6 +38,7 @@ router.get('/', (req, res) => {
 	Post.find({})
 		.sort('-createdAt')
 		.exec((err, posts) => {
+			console.log(posts);
 			res.render('posts/index', { posts: posts });
 		});
 });
