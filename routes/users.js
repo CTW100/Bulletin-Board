@@ -6,7 +6,7 @@ const User = require('../models/User');
 router.get('/new', (req, res) => {
 	const user = req.flash('user')[0] || {};
 	const errors = req.flash('errors')[0] || {};
-	res.render('users/new');
+	res.render('users/new', { user: user, errors: errors });
 });
 
 // Create (POST)

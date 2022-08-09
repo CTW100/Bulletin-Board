@@ -1,7 +1,8 @@
-const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
+var mongoose = require('mongoose');
+var bcrypt = require('bcryptjs');
 
-const userSchema = mongoose.Schema(
+// schema
+var userSchema = mongoose.Schema(
 	{
 		username: {
 			type: String,
@@ -21,7 +22,6 @@ const userSchema = mongoose.Schema(
 			match: [/^.{4,12}$/, 'Should be 4-12 characters!'],
 			trim: true,
 		},
-
 		email: {
 			type: String,
 			match: [
@@ -36,38 +36,47 @@ const userSchema = mongoose.Schema(
 	}
 );
 
+// virtuals
 userSchema
 	.virtual('passwordConfirmation')
-	.get(() => this._passwordConfirmation)
-	.set((value) => {
+	.get(function () {
+		return this._passwordConfirmation;
+	})
+	.set(function (value) {
 		this._passwordConfirmation = value;
 	});
 
 userSchema
 	.virtual('originalPassword')
-	.get(() => this._originalPassword)
-	.set((value) => {
+	.get(function () {
+		return this._originalPassword;
+	})
+	.set(function (value) {
 		this._originalPassword = value;
 	});
 
 userSchema
 	.virtual('currentPassword')
-	.get(() => this._currentPassword)
-	.set((value) => {
+	.get(function () {
+		return this._currentPassword;
+	})
+	.set(function (value) {
 		this._currentPassword = value;
 	});
 
 userSchema
 	.virtual('newPassword')
-	.get(() => this._newPassword)
-	.set((value) => {
+	.get(function () {
+		return this._newPassword;
+	})
+	.set(function (value) {
 		this._newPassword = value;
 	});
 
-// Password validation // 2
-var passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,16}$/; // 2-1
+// password validation
+var passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,16}$/;
 var passwordRegexErrorMessage =
-	'Should be minimum 8 characters of alphabet and number combination!'; // 2-2
+	'Should be minimum 8 characters of alphabet and number combination!';
 userSchema.path('password').validate(function (v) {
 	var user = this;
 
@@ -81,8 +90,7 @@ userSchema.path('password').validate(function (v) {
 		}
 
 		if (!passwordRegex.test(user.password)) {
-			// 2-3
-			user.invalidate('password', passwordRegexErrorMessage); // 2-4
+			user.invalidate('password', passwordRegexErrorMessage);
 		} else if (user.password !== user.passwordConfirmation) {
 			user.invalidate(
 				'passwordConfirmation',
@@ -102,8 +110,7 @@ userSchema.path('password').validate(function (v) {
 		}
 
 		if (user.newPassword && !passwordRegex.test(user.newPassword)) {
-			// 2-3
-			user.invalidate('newPassword', passwordRegexErrorMessage); // 2-4
+			user.invalidate('newPassword', passwordRegexErrorMessage);
 		} else if (user.newPassword !== user.passwordConfirmation) {
 			user.invalidate(
 				'passwordConfirmation',
@@ -113,21 +120,23 @@ userSchema.path('password').validate(function (v) {
 	}
 });
 
-userSchema.pre('save', (req, res, next) => {
-	const user = this;
-
+// hash password
+userSchema.pre('save', function (next) {
+	var user = this;
 	if (!user.isModified('password')) {
 		return next();
 	} else {
 		user.password = bcrypt.hashSync(user.password);
-		user.next();
+		return next();
 	}
 });
 
-userSchema.methods.authenticate = (password) => {
-	const user = this;
+// model methods
+userSchema.methods.authenticate = function (password) {
+	var user = this;
 	return bcrypt.compareSync(password, user.password);
 };
 
-const User = mongoose.model('user', userSchema);
+// model & export
+var User = mongoose.model('user', userSchema);
 module.exports = User;
