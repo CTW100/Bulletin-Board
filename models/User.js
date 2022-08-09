@@ -9,7 +9,7 @@ const userSchema = mongoose.Schema(
 		},
 		password: {
 			type: String,
-			requried: [true, 'Password is required!'],
+			required: [true, 'Password is required!'],
 			select: false,
 		},
 		name: { type: String, required: [true, 'Name is required!'] },
@@ -36,9 +36,9 @@ userSchema
 
 userSchema
 	.virtual('currentPassword')
-	.get(() => this._originalPassword)
+	.get(() => this._currentPassword)
 	.set((value) => {
-		this._originalPassword = value;
+		this._currentPassword = value;
 	});
 
 userSchema
@@ -49,7 +49,41 @@ userSchema
 	});
 
 // Password validation
+userSchema.path('password').validate(function (v) {
+	const user = this;
 
+	// 회원가입
+	if (user.isNew) {
+		if (!user.passwordConfirmation) {
+			user.invalidate(
+				'passwordConfirmation',
+				'Password Confirmation is required!'
+			);
+		}
+
+		if (user.password !== user.passwordConfirmation) {
+			user.invalidate(
+				'passwordConfirmation',
+				'Password Confirmation does not matched!'
+			);
+		}
+	}
+
+	// 회원 정보 수정
+	if (!user.isNew) {
+		if (!user.currentPassword) {
+			user.invalidate('currentPassword', 'Current Password is required!');
+		} else if (user.currentPassword != user.originalPassword) {
+			user.invalidate('currentPassword', 'Current Password is invalid!');
+		}
+		if (user.newPassword !== user.passwordConfirmation) {
+			user.invalidate(
+				'passwordConfirmation',
+				'Password Confirmation does not matched!'
+			);
+		}
+	}
+});
 
 const User = mongoose.model('user', userSchema);
 module.exports = User;

@@ -25,6 +25,7 @@ app.use(methodOverride('_method'));
 
 app.use('/', require('./routes/home'));
 app.use('/posts', require('./routes/posts'));
+app.use('/users', require('./routes/users'));
 
 const port = 3000;
 app.listen(3000, (req, res) => {
