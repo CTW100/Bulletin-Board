@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
 const userSchema = mongoose.Schema(
 	{
@@ -52,7 +53,7 @@ userSchema
 userSchema.path('password').validate(function (v) {
 	const user = this;
 
-	// 회원가입
+	// Create User
 	if (user.isNew) {
 		if (!user.passwordConfirmation) {
 			user.invalidate(
@@ -69,11 +70,13 @@ userSchema.path('password').validate(function (v) {
 		}
 	}
 
-	// 회원 정보 수정
+	// Update User
 	if (!user.isNew) {
 		if (!user.currentPassword) {
 			user.invalidate('currentPassword', 'Current Password is required!');
-		} else if (user.currentPassword != user.originalPassword) {
+		} else if (
+			bcrypt.compareSync(user.currentPassword, user.originalPassword)
+		) {
 			user.invalidate('currentPassword', 'Current Password is invalid!');
 		}
 		if (user.newPassword !== user.passwordConfirmation) {
@@ -84,6 +87,22 @@ userSchema.path('password').validate(function (v) {
 		}
 	}
 });
+
+userSchema.pre('save', (req, res, next) => {
+	const user = this;
+
+	if (!user.isModified('password')) {
+		return next();
+	} else {
+		user.password = bcrypt.hashSync(user.password);
+		user.next();
+	}
+});
+
+userSchema.methods.authenticate = (password) => {
+	const user = this;
+	return bcrypt.compareSync(password, user.password);
+};
 
 const User = mongoose.model('user', userSchema);
 module.exports = User;
