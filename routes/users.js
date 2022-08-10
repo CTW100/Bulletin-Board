@@ -18,12 +18,12 @@ router.post('/', (req, res) => {
 			req.flash('errors', util.parseError(err));
 			return res.redirect('/users/new');
 		}
-		res.redirect('/users');
+		res.redirect('/');
 	});
 });
 
 // Edit (GET)
-router.get('/:username/edit', (req, res) => {
+router.get('/:username/edit', util.isLoggedin, checkPermission, (req, res) => {
 	const user = req.flash('user')[0];
 	const errors = req.flash('errors')[0] || {};
 	if (!user) {
@@ -45,59 +45,55 @@ router.get('/:username/edit', (req, res) => {
 });
 
 // Update (PUT)
-router.put('/:username', function (req, res, next) {
-	User.findOne({ username: req.params.username })
-		.select('password')
-		.exec(function (err, user) {
-			if (err) return res.json(err);
+router.put(
+	'/:username',
+	util.isLoggedin,
+	checkPermission,
+	function (req, res, next) {
+		User.findOne({ username: req.params.username })
+			.select('password')
+			.exec(function (err, user) {
+				if (err) return res.json(err);
 
-			// update user object
-			user.originalPassword = user.password;
-			user.password = req.body.newPassword
-				? req.body.newPassword
-				: user.password;
-			for (var p in req.body) {
-				user[p] = req.body[p];
-			}
-
-			// save updated user
-			user.save(function (err, user) {
-				if (err) {
-					req.flash('user', req.body);
-					req.flash('errors', util.parseError(err));
-					return res.redirect(
-						'/users/' + req.params.username + '/edit'
-					);
+				// update user object
+				user.originalPassword = user.password;
+				user.password = req.body.newPassword
+					? req.body.newPassword
+					: user.password;
+				for (var p in req.body) {
+					user[p] = req.body[p];
 				}
-				res.redirect('/users/' + user.username);
-			});
-		});
-});
 
-// Index (GET)
-router.get('/', (req, res) => {
-	User.find({})
-		.sort({ username: 1 })
-		.exec((err, users) => {
-			if (err) return res.json(err);
-			res.render('users/index', { users: users });
-		});
-});
+				// save updated user
+				user.save(function (err, user) {
+					if (err) {
+						req.flash('user', req.body);
+						req.flash('errors', util.parseError(err));
+						return res.redirect(
+							'/users/' + req.params.username + '/edit'
+						);
+					}
+					res.redirect('/users/' + user.username);
+				});
+			});
+	}
+);
 
 // Show (GET)
-router.get('/:username', (req, res) => {
+router.get('/:username', util.isLoggedin, checkPermission, (req, res) => {
 	User.findOne({ username: req.params.username }, (err, user) => {
 		if (err) return res.json(err);
 		res.render('users/show', { user: user });
 	});
 });
 
-// Destroy (DELETE)
-router.delete('/:username', (req, res) => {
-	User.deleteOne({ username: req.params.username }, (err) => {
-		if (err) return res.json(err);
-		res.redirect('/users');
-	});
-});
-
 module.exports = router;
+
+function checkPermission(req, res, next) {
+	Post.findOne({ _id: req.params.id }, (err, post) => {
+		if (err) return res.json(err);
+		if (post.author != req.params.id) return util.noPermission(req, res);
+
+		next();
+	});
+}
