@@ -1,6 +1,7 @@
 var express = require('express');
 var router = express.Router();
 var Post = require('../models/Post');
+var User = require('../models/User');
 var util = require('../util');
 
 // Index
@@ -11,20 +12,28 @@ router.get('/', async function (req, res) {
 	limit = !isNaN(limit) ? limit : 10;
 
 	var skip = (page - 1) * limit;
-	var count = await Post.countDocuments({});
-	var maxPage = Math.ceil(count / limit);
-	var posts = await Post.find({})
-		.populate('author')
-		.sort('-createdAt')
-		.skip(skip)
-		.limit(limit)
-		.exec();
+	var maxPage = 0;
+	var searchQuery = await createSearchQuery(req.query);
+	var posts = [];
+
+	if (searchQuery) {
+		var count = await Post.countDocuments(searchQuery);
+		maxPage = Math.ceil(count / limit);
+		posts = await Post.find(searchQuery)
+			.populate('author')
+			.sort('-createdAt')
+			.skip(skip)
+			.limit(limit)
+			.exec();
+	}
 
 	res.render('posts/index', {
 		posts: posts,
 		currentPage: page,
 		maxPage: maxPage,
 		limit: limit,
+		searchType: req.query.searchType,
+		searchText: req.query.searchText,
 	});
 });
 
@@ -45,7 +54,11 @@ router.post('/', util.isLoggedin, function (req, res) {
 			return res.redirect('/posts/new' + res.locals.getPostQueryString());
 		}
 		res.redirect(
-			'/posts' + res.locals.getPostQueryString(false, { page: 1 })
+			'/posts' +
+				res.locals.getPostQueryString(false, {
+					page: 1,
+					searchText: '',
+				})
 		);
 	});
 });
@@ -118,4 +131,45 @@ function checkPermission(req, res, next) {
 
 		next();
 	});
+}
+
+async function createSearchQuery(queries) {
+	var searchQuery = {};
+	if (
+		queries.searchType &&
+		queries.searchText &&
+		queries.searchText.length >= 3
+	) {
+		var searchTypes = queries.searchType.toLowerCase().split(',');
+		var postQueries = [];
+		if (searchTypes.indexOf('title') >= 0) {
+			postQueries.push({
+				title: { $regex: new RegExp(queries.searchText, 'i') },
+			});
+		}
+		if (searchTypes.indexOf('body') >= 0) {
+			postQueries.push({
+				body: { $regex: new RegExp(queries.searchText, 'i') },
+			});
+		}
+		if (searchTypes.indexOf('author!') >= 0) {
+			var user = await User.findOne({
+				username: queries.searchText,
+			}).exec();
+			if (user) postQueries.push({ author: user._id });
+		} else if (searchTypes.indexOf('author') >= 0) {
+			var users = await User.find({
+				username: { $regex: new RegExp(queries.searchText, 'i') },
+			}).exec();
+			var userIds = [];
+			for (var user of users) {
+				userIds.push(user._id);
+			}
+			if (userIds.length > 0)
+				postQueries.push({ author: { $in: userIds } });
+		}
+		if (postQueries.length > 0) searchQuery = { $or: postQueries };
+		else searchQuery = null;
+	}
+	return searchQuery;
 }

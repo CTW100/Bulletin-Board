@@ -1,5 +1,15 @@
 /* public/css/master.css */
 
+.highlighted {
+	background-color: yellow;
+}
+.post-index-tool {
+	max-width: 450px;
+}
+.post-index-tool input[type='text'] {
+	max-width: 130px;
+}
+
 body {
 	font-family: 'Open Sans', sans-serif;
 }
