@@ -1,5 +1,7 @@
 http://a-mean-blog.com/ko/blog/Node-JS-첫걸음/게시판-만들기
 
+https://bulletin-board-uchaw.run.goorm.io
+
 virtuals
 https://mongoosejs.com/docs/tutorials/virtuals.html
 

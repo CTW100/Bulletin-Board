@@ -1,7 +1,6 @@
-const util = {};
+var util = {};
 
-// functions
-util.parseError = (errors) => {
+util.parseError = function (errors) {
 	var parsed = {};
 	if (errors.name == 'ValidationError') {
 		for (var name in errors.errors) {
@@ -19,8 +18,8 @@ util.parseError = (errors) => {
 	return parsed;
 };
 
-util.isLoggedin = (req, res, next) => {
-	if (req.isAuthenticate()) {
+util.isLoggedin = function (req, res, next) {
+	if (req.isAuthenticated()) {
 		next();
 	} else {
 		req.flash('errors', { login: 'Please login first' });
@@ -28,7 +27,7 @@ util.isLoggedin = (req, res, next) => {
 	}
 };
 
-util.noPermission = (req, res) => {
+util.noPermission = function (req, res) {
 	req.flash('errors', { login: "You don't have permission" });
 	req.logout();
 	res.redirect('/login');

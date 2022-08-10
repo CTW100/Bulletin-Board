@@ -1,20 +1,30 @@
-const { render } = require('ejs');
-const express = require('express');
-const router = express.Router();
-const Post = require('../models/Post');
-const util = require('../util');
+var express = require('express');
+var router = express.Router();
+var Post = require('../models/Post');
+var util = require('../util');
 
-// New - 생성폼(form)을 사용자에게 보여줌 (GET)
-router.get('/new', util.isLoggedin, (req, res) => {
-	const post = req.flash('post')[0] || {};
-	const errors = req.flash('errors')[0] || {};
+// Index
+router.get('/', function (req, res) {
+	Post.find({})
+		.populate('author')
+		.sort('-createdAt')
+		.exec(function (err, posts) {
+			if (err) return res.json(err);
+			res.render('posts/index', { posts: posts });
+		});
+});
+
+// New
+router.get('/new', util.isLoggedin, function (req, res) {
+	var post = req.flash('post')[0] || {};
+	var errors = req.flash('errors')[0] || {};
 	res.render('posts/new', { post: post, errors: errors });
 });
 
-// Create - 전달 받은 자료를 실제로 생성 (POST)
-router.post('/', util.isLoggedin, (req, res) => {
+// create
+router.post('/', util.isLoggedin, function (req, res) {
 	req.body.author = req.user._id;
-	Post.create(req.body, (err, post) => {
+	Post.create(req.body, function (err, post) {
 		if (err) {
 			req.flash('post', req.body);
 			req.flash('errors', util.parseError(err));
@@ -24,29 +34,39 @@ router.post('/', util.isLoggedin, (req, res) => {
 	});
 });
 
-// Edit - 수정폼을 사용자에게 보여줌 (GET)
-router.get('/:id/edit', util.isLoggedin, checkPermission, (req, res) => {
-	const post = req.flash('post')[0];
-	const errors = req.flash('errors')[0] || {};
-	if (!post) {
-		Post.findOne({ _id: req.params.id }, (err, post) => {
+// show
+router.get('/:id', function (req, res) {
+	Post.findOne({ _id: req.params.id })
+		.populate('author')
+		.exec(function (err, post) {
 			if (err) return res.json(err);
-			res.render('posts/edit', { post: post, erorrs: errors });
+			res.render('posts/show', { post: post });
+		});
+});
+
+// edit
+router.get('/:id/edit', util.isLoggedin, checkPermission, function (req, res) {
+	var post = req.flash('post')[0];
+	var errors = req.flash('errors')[0] || {};
+	if (!post) {
+		Post.findOne({ _id: req.params.id }, function (err, post) {
+			if (err) return res.json(err);
+			res.render('posts/edit', { post: post, errors: errors });
 		});
 	} else {
 		post._id = req.params.id;
-		render('posts/edit', { post: post, errors: errors });
+		res.render('posts/edit', { post: post, errors: errors });
 	}
 });
 
-// Update - 전달 받은 자료를 바탕으로 현재 자료 수정 (PUT)
-router.put('/:id', util.isLoggedin, checkPermission, (req, res) => {
+// update
+router.put('/:id', util.isLoggedin, checkPermission, function (req, res) {
 	req.body.updatedAt = Date.now();
 	Post.findOneAndUpdate(
 		{ _id: req.params.id },
 		req.body,
 		{ runValidators: true },
-		(err, post) => {
+		function (err, post) {
 			if (err) {
 				req.flash('post', req.body);
 				req.flash('errors', util.parseError(err));
@@ -57,30 +77,9 @@ router.put('/:id', util.isLoggedin, checkPermission, (req, res) => {
 	);
 });
 
-// Index - 자료들 목록 조회 (GET)
-router.get('/', (req, res) => {
-	Post.find({})
-		.populate('author')
-		.sort('-createdAt')
-		.exec((err, posts) => {
-			console.log(posts);
-			res.render('posts/index', { posts: posts });
-		});
-});
-
-// Show - 하나의 자료를 상세히 보여줌 (GET)
-router.get('/:id', (req, res) => {
-	Post.findOne({ _id: req.params.id })
-		.populate('author')
-		.exec((err, post) => {
-			if (err) return res.json(err);
-			res.render('posts/show', { post: post });
-		});
-});
-
-// Destroy - 자료 삭제 (DELETE)
-router.delete('/:id', util.isLoggedin, checkPermission, (req, res) => {
-	Post.deleteOne({ _id: req.params.id }, (err) => {
+// destroy
+router.delete('/:id', util.isLoggedin, checkPermission, function (req, res) {
+	Post.deleteOne({ _id: req.params.id }, function (err) {
 		if (err) return res.json(err);
 		res.redirect('/posts');
 	});
@@ -88,10 +87,11 @@ router.delete('/:id', util.isLoggedin, checkPermission, (req, res) => {
 
 module.exports = router;
 
+// private functions
 function checkPermission(req, res, next) {
-	Post.findOne({ _id: req.params.id }, (err, post) => {
+	Post.findOne({ _id: req.params.id }, function (err, post) {
 		if (err) return res.json(err);
-		if (post.author != req.params.id) return util.noPermission(req, res);
+		if (post.author != req.user.id) return util.noPermission(req, res);
 
 		next();
 	});
