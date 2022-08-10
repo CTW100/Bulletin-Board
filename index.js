@@ -6,6 +6,8 @@ const methodOverride = require('method-override');
 const flash = require('connect-flash');
 const session = require('express-session');
 const passport = require('./config/passport');
+const util = require('./util');
+
 const app = express();
 
 mongoose.connect('mongodb://127.0.0.1:27017');
@@ -41,7 +43,7 @@ app.use((req, res, next) => {
 });
 
 app.use('/', require('./routes/home'));
-app.use('/posts', require('./routes/posts'));
+app.use('/posts', util.getPostQueryString, require('./routes/posts'));
 app.use('/users', require('./routes/users'));
 
 const port = 3000;
